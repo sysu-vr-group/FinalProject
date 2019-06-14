@@ -202,12 +202,12 @@ OpenGL渲染部分最为重要的就是球体的渲染，因为最后需要将�
 
 ## 七、参考文献
 
-[1] 朱恩弘，张红英，吴亚东，霍永青. 单幅图像的高动态范围图像生成方法[J]. 计算机辅助设计与图形学学报
+[1] 朱恩弘,张红英,吴亚东,霍永青.单幅图像的高动态范围图像生成方法[J].计算机辅助设计与图形学学报,2016,28(10):1713-1722.
 
-[2] Samuel W.Hasinoff, Dillon Sharlet. Burst photography for high dynamic range and low-light imaging[J]. Google Search
+[2] Sam Hasinoff, Dillon Sharlet, Ryan Geiss, Andrew Adams, Jonathan T. Barron, Florian Kainz, Jiawen Chen, and Marc Levoy. Burst photography for high dynamic range and low-light imaging on mobile cameras. SIGGRAPH Asia, 2016.
 
-[3] Fredo Durand, Julie Dorsey. Fast Bilateral Filtering for the Display of High-Dynamic-Range Images[J]. Massachusetts Institute of Technology
+[3] Durand, Frédo, and Julie Dorsey. "Fast bilateral filtering for the display of high-dynamic-range images." *ACM transactions on graphics (TOG)*. Vol. 21. No. 3. ACM, 2002.
 
-[4] Benjamin Guthier, Stephan Kopf, Wolfgang Effelsberg. Algorithms for a Real-Time HDR Video System[J]. Department of Computer Science IV, University of Mannheim, Mannheim, Germany
+[4] Benjamin Guthier, Stephan Kopf, and Wolfgang Effelsberg. Algorithms for a real-time hdr video system. Pattern Recognition Letters, 34(1):25–33, 2013.
 
-[5] G.Eilertsen, R.K.Mantiuk, J.Unger. A comparative review of tone-mapping algorithms for high dynamic range video[J]. Linköping University, Sweden Computer Laboratory, University of Cambridge, UK
+[5] Gabriel Eilertsen, Rafał K Mantiuk, and Jonas Unger. A comparative review of tone-mapping algorithms for high dynamic range video. In Computer Graphics Forum, volume 36, pages 565–592. Wiley Online Library, 2017.
