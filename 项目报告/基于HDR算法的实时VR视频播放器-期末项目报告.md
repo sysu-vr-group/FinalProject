@@ -13,9 +13,9 @@
 ## 一、 HDR算法的基本实现与效果优化
 1. 基于单张输入图像的HDR算法实现
 
-   HDR算法的基本实现，实际上参考了`单幅图像的高动态范围图像生成方法`此篇论文，算法的主要步骤如下：
+   HDR算法的基本实现，实际上参考了*单幅图像的高动态范围图像生成方法*此篇论文，算法的主要步骤如下：
 
-   * 在`YUV`颜色空间内，对原始图像的亮度分量进行反色调映射`Inverse Tone-Mapping`
+   * 在`YUV`颜色空间内，对原始图像的亮度分量进行反色调映射*Inverse Tone-Mapping*
    * 对处理之后的图像进行阈值图像的求取，同时进行高斯滤波，保留高光部分细节
    * 将前两部分处理得到的图像与色度分量图融合处理，在融合的同时对图像进行最后的色调调整和对比度优化
    * 进行噪点去除，同时针对暗部进行特殊处理
@@ -36,9 +36,9 @@
 
      ![img](../images/2.png)
 
-     该式子即为反色调映射的核心算式，其中，Ld(x,y)代表经过色调映射后 LDR 图像的像素点的值. 在映射过程中, 高亮度值的像素点可以近似地看作被 1/L 所量化压缩. 与此同时, 低亮度值的像素点可以看作被 1 量化压缩. 这使得高亮度值像素点在被压缩的同时, 低亮度值像素点的对比度得以保留.
+     该式子即为反色调映射的核心算式，其中，$L_d(x,y)​$代表经过色调映射后 LDR 图像的像素点的值. 在映射过程中, 高亮度值的像素点可以近似地看作被 1/L 所量化压缩. 与此同时, 低亮度值的像素点可以看作被 1 量化压缩. 这使得高亮度值像素点在被压缩的同时, 低亮度值像素点的对比度得以保留.
 
-     Lwhite 决定了扩展函数的扩展曲线形状, 与映射后图像的对比度相关, 经过实验表明, 当取值较大时效果较好, 推荐采用 Lwhite=Lmax, 在限制伪像的同时提高对比度. 
+     $L_{white}$ 决定了扩展函数的扩展曲线形状, 与映射后图像的对比度相关, 经过实验表明, 当取值较大时效果较好, 推荐采用 $L_{white}=L_{max}​$, 在限制伪像的同时提高对比度. 
 
      ![img](../images/3.png)
 
@@ -130,14 +130,27 @@
 
 
 ## 三、 HDR算法处理视频的优化过程
-1. 结合`Brust Photography`进行高动态场景视频的多帧拟合
+1. 使用 Leaky Integrator 避免视频闪烁情况发生
 
-   
+   由于视频帧序列中可能出现异常的像素值，帧之间的参数可能出现过大的改变导致可见的闪烁现象，因此可以使用漏积分器（Leaky Integrator）来对帧中与像素值相关的参数进行调整，使得对每一帧的处理可以保留先前帧的参数影响，以降低帧之间的剧烈变化，减少闪烁现象:
 
+   $$A_n=(1-\alpha_L)A_{(n-1)}+\alpha_LA​$$
 
-2. 使用亮度均值调整算法避免视频闪烁情况发生
+   其中$\alpha_L\in[0, 1] $为定义的常数。经过漏积分器处理后可大幅降低参数的变化幅度，从而减少闪烁：
 
-   
+   ![](../images/leaky-integrator.png)
+
+   上图中红色曲线表示的为未进行处理时的$A=L_{max}-L_{avg}$的数值，蓝色曲线为$A_n=(1-\alpha_L)A_{(n-1)}+\alpha_LA$的数值。
+
+2. 使用多核 CPU 并行化实现实时的视频帧处理
+
+   在我们的实验中，经过算法处理的 HDR 视频播放器在单线程下只能获得20到24的帧率，达不到实时性的要求，对于播放器而言并不能获得良好的体验，因此需要通过其他方法提升速度，以获得更高的帧率。
+
+   在相关的许多论文中，视频的实时 HDR 处理大部分使用的是 FPGA 或 GPU 等特殊硬件进行，这些硬件的特点是特别适用于并行计算，但是这些方法需要使用特殊硬件，成本较高而且编程难度较大。考虑到目前多核 CPU 的性能已可满足许多计算要求，本次的实现选择使用 CPU 并行化来加速视频处理，实现实时的视频播放。
+
+   考虑到多线程编程的内存安全与速度等因素，我们选用了 Rust 语言来实现视频帧处理的算法，将代码编译为动态链接库供由 C++ 编写的视频播放器调用。
+
+   并行化的主要实现位置为在对视频每帧的处理的各个步骤对图像像素进行并行的处理。经过实验，在一台搭载8核 CPU 下的计算机中进行并行化处理后的视频播放帧率可以达到60至70帧，达到较好的实时性。
 
 
 
@@ -211,3 +224,7 @@ OpenGL渲染部分最为重要的就是球体的渲染，因为最后需要将�
 [4] Benjamin Guthier, Stephan Kopf, and Wolfgang Effelsberg. Algorithms for a real-time hdr video system. Pattern Recognition Letters, 34(1):25–33, 2013.
 
 [5] Gabriel Eilertsen, Rafał K Mantiuk, and Jonas Unger. A comparative review of tone-mapping algorithms for high dynamic range video. In Computer Graphics Forum, volume 36, pages 565–592. Wiley Online Library, 2017.
+
+[6] Benjamin Guthier, Stephan Kopf, Marc Eble, and Wolfgang Effelsberg. Flicker reduction in tone mapped high dynamic range video. In Color Imaging: Displaying, Processing, Hardcopy, and Applications, 2011.
+
+[7] Chris Kiser, Erik Reinhard, Mike Tocci, and Nora Tocci. Real time automated tone mapping system for hdr video. In IEEE International Conference on Image Processing, volume 134. IEEE Orlando, FL, 2012.
