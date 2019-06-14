@@ -7,7 +7,6 @@
 
 * 16340025 陈慕远： 负责实现实时VR视频播放器，使用HDR算法处理源视频
 
-  
 
 
 ## 一、 HDR算法的基本实现与效果优化
@@ -20,7 +19,6 @@
    * 将前两部分处理得到的图像与色度分量图融合处理，在融合的同时对图像进行最后的色调调整和对比度优化
    * 进行噪点去除，同时针对暗部进行特殊处理
 
-   
 
    整体的处理流程如下：
 
@@ -42,7 +40,6 @@
 
      ![img](../images/3.png)
 
-     
 
    * 高光区域处理
 
@@ -66,7 +63,6 @@
 
      ![img](../images/8.png)
 
-     
 
    * 图像融合
 
@@ -74,13 +70,11 @@
 
      ![img](../images/9.png)
 
-     
 
    * 总结
 
      ![img](../images/10.png)
 
-     
 
 2. 算法的效果展示：
 
@@ -105,7 +99,6 @@
 
 1. 首先他将原始的HDR数据分解成两个层：base layer 和 detail layer,然后降低base layer的对比度，不改变detail layer的数据，其中：base layer的数据用HDR原始数据进行对数操作，获取log layer，然后通过快速双边滤波算法获取，detail layer的数据通过求取log layer与base layer之间的像素值差，保留细节层。
 
-   
 
 2. 最终通过设置一定的compression factor，将detail layer和base layer进行合并，通过反对数运算，生成HDR处理结果图。
 
@@ -130,11 +123,67 @@
 
 
 ## 三、 HDR算法处理视频的优化过程
-1. 使用 Leaky Integrator 避免视频闪烁情况发生
+
+1. 结合Brust Photography进行高动态场景视频的多帧拟合
+
+   Google Search实验室根据成像系统的特性，为高动态范围的视频处理提出了一种改进算法，此算法可适用于多种不同复杂环境下，并且成像质量优于传统算法。
+
+   * 直接获取Bayer raw图像进行处理，而不是经过ISP后处理的RGB图像，从而获取更多的图像信息； 
+   * 提出了新的基于FFT的配准方法，以及基于图像对的维纳滤波融合方法，使得融合结果对运动和噪声更加鲁棒
+
+
+   为了处理高动态范围的多帧场景，文章提出的算法步骤为：
+
+   1. 使用多帧图像进行阴影区域的降噪
+   2. 使用局部色调映射压缩动态范围
+   3. 使用高斯金字塔，将相邻帧之间的图像进行分层全局配准
+      4. 实现全局去噪，同时基于图像对对时域进行融合
+
+![img](../images/15.png)
+
+
+
+* 仅仅做图像全局配准是不够的，因为各帧之间可能存在非刚体变换，场景移动，光线变化等，在做图像融合时还需要把这些因素考虑进去，防止鬼影的出现。对此，文章提出了基于图像对的频域时间滤波的融合方法，将参考图像中的每一个块，与其它每一帧的对应的块进行融合。对于Bayer raw输入的颜色平面使用16×1616×16的块，而对于特别暗的场景，低频噪声比较剧烈，则使用32×32大小的块。
+
+  ​
+
+* 融合操作是作用于图像块的空间频域的。对于一个给定的参考图像块，从多帧图像中选取其对应的图像块，每帧一块，计算他们各自的2D DFT记为$T_z(ω)$，其中$ω=(ω_x,ω_y)$。 
+
+  假设第0帧为参考帧，为了增加对鬼影的鲁棒性，采用了如下的融合方式：
+
+  $$\tilde{T_0}(\omega)=\frac{1}{N}\sum_{z=0}^{n-1}T_z(\omega)+A_z(\omega)[T_0(\omega)-T_z(\omega)]$$
+
+   对于给定的频率，Az控制着第zz帧融合进最终结果的程度，其定义为经典的维纳滤波的一种变体：
+
+  $$A_z(\omega)=\frac{|D_z(\omega)|^2}{|D_z(\omega)|^2+c\sigma^2}$$
+
+   
+
+2. 使用亮度均值调整算法避免视频闪烁情况发生
+  结合了上述基于HDR算法，采用多帧融合视频内部每一帧的优化算法之后，在视频渲染播放时，往往会出现视频闪烁情况。此种情况的产生，大部分是由于场景与场景之间的亮度突变，导致视频播放时出现帧闪烁，这对于用户的观看体验是很不友好的，于是以下根据全局亮度均值调整算法，来避免视频闪烁情况的发生。
+
+   * 亮度均值调整算法的思想是：结合之前几帧亮度的均值来调整当前帧的亮度。使得同一场景中，帧与帧之间亮度差值维持在*人眼不可察觉的最大闪烁亮度差*之间，改善转换之后视频闪烁的问题。
+
+     ​
+
+   * 全局亮度均值调整算法步骤为：
+
+      0. 确定调整步长为$Step$，接下来根据步长进行帧场景之间的亮度调整
+      
+      1. 调整步长内的视频帧进行HDR算法与Brust多帧拟合，计算并保存每帧的平均亮度值 $L_i$;
+
+      2. 处理第n帧前，计算此前步长内的的平均亮度$L_{n avg} = \frac{1}{Step}\sum^{n-1}_{i =n-Step}L_i$
+
+      3. 对第n帧进行改进后的HDR算法处理，并计算得到`HDR`帧的平均亮度值$L_{n0}$
+
+      4. 如果$|L_{n0}- L_{navg}| \leq \varepsilon _{L}$，其中$\varepsilon_L$ 表示人眼不可察觉最大闪烁亮度差，则不对该帧亮度进行调整，转到步骤(2)继续处理下一帧。
+      如果$|L_{n0}- L_{navg}| \geq \varepsilon _{H}$，其中$\varepsilon_H$表示判断场景改变的的依据，则视频进入了新的场景，不对该帧进行处理，转到步骤(1)，初始化。
+      如果$\varepsilon_L < |L{n0}- L_{navg}| < \varepsilon_H$，则代表在同一场景中发生了闪烁现象，调整该帧的亮度值得到$L{n1}$，$|L_{n1}- L_{navg}| \leq \varepsilon _{L}$，转到步骤(2)继续处理下一帧。
+
+3. 使用 Leaky Integrator 避免视频闪烁情况发生
 
    由于视频帧序列中可能出现异常的像素值，帧之间的参数可能出现过大的改变导致可见的闪烁现象，因此可以使用漏积分器（Leaky Integrator）来对帧中与像素值相关的参数进行调整，使得对每一帧的处理可以保留先前帧的参数影响，以降低帧之间的剧烈变化，减少闪烁现象:
-
-   $$A_n=(1-\alpha_L)A_{(n-1)}+\alpha_LA​$$
+    ​ $$A_n=(1-\alpha_L)A_{(n-1)}+\alpha_LA​$$
 
    其中$\alpha_L\in[0, 1] $为定义的常数。经过漏积分器处理后可大幅降低参数的变化幅度，从而减少闪烁：
 
@@ -142,7 +191,7 @@
 
    上图中红色曲线表示的为未进行处理时的$A=L_{max}-L_{avg}$的数值，蓝色曲线为$A_n=(1-\alpha_L)A_{(n-1)}+\alpha_LA$的数值。
 
-2. 使用多核 CPU 并行化实现实时的视频帧处理
+4. 使用多核 CPU 并行化实现实时的视频帧处理
 
    在我们的实验中，经过算法处理的 HDR 视频播放器在单线程下只能获得20到24的帧率，达不到实时性的要求，对于播放器而言并不能获得良好的体验，因此需要通过其他方法提升速度，以获得更高的帧率。
 
@@ -153,9 +202,7 @@
    并行化的主要实现位置为在对视频每帧的处理的各个步骤对图像像素进行并行的处理。经过实验，在一台搭载8核 CPU 下的计算机中进行并行化处理后的视频播放帧率可以达到60至70帧，达到较好的实时性。
 
 
-
 ## 四、 实现全景VR视频播放器
-
 框架结构：
 
 - FFMPEG：媒体处理，输出YUV444图像（传给hdr部分进行处理）
@@ -181,47 +228,31 @@ OpenGL渲染部分最为重要的就是球体的渲染，因为最后需要将�
 
 最后，通过添加对鼠标事件的相应处理使得可以通过移动鼠标来改变视角，做到自由360°观看全景视频的效果。
 
-
-
 实现的球体效果（外部视角）：
 
 ![](../images/spere.png)
 
 
 
+## 五、 实验总结
+
+1. 本次VR项目实际上难度较大，前前后后通过研读了很多论文，研究了众多算法，才得以将算法落到实地，成功实现高效率的实时HDR渲染的全景视频播放器。
 
 
-## 五、 实现支持实时渲染HDR视频的播放器
-1. HDR算法部分、视频播放器部分模块化
-
-   
-
-
-2. 
-
-
-
-## 六、 实验总结
-
-1. 
-
-
-2. 
+2. 本次作业也是充分融合了VR课程的知识点，结合了老师提供的各种论文，最终通过参考此些论文，成功完成项目，小组内的组员也是经历了很久的算法实现和测试，最终完成了VR课程的期末项目。
 
 
 
 
+## 六、参考文献
 
+[1] 朱恩弘，张红英，吴亚东，霍永青. 单幅图像的高动态范围图像生成方法[J]. 计算机辅助设计与图形学学报
 
-## 七、参考文献
+[2] Samuel W.Hasinoff, Dillon Sharlet. Burst photography for high dynamic range and low-light imaging[J]. Google Search
 
-[1] 朱恩弘,张红英,吴亚东,霍永青.单幅图像的高动态范围图像生成方法[J].计算机辅助设计与图形学学报,2016,28(10):1713-1722.
+[3] Fredo Durand, Julie Dorsey. Fast Bilateral Filtering for the Display of High-Dynamic-Range Images[J]. Massachusetts Institute of Technology
 
-[2] Sam Hasinoff, Dillon Sharlet, Ryan Geiss, Andrew Adams, Jonathan T. Barron, Florian Kainz, Jiawen Chen, and Marc Levoy. Burst photography for high dynamic range and low-light imaging on mobile cameras. SIGGRAPH Asia, 2016.
-
-[3] Durand, Frédo, and Julie Dorsey. "Fast bilateral filtering for the display of high-dynamic-range images." *ACM transactions on graphics (TOG)*. Vol. 21. No. 3. ACM, 2002.
-
-[4] Benjamin Guthier, Stephan Kopf, and Wolfgang Effelsberg. Algorithms for a real-time hdr video system. Pattern Recognition Letters, 34(1):25–33, 2013.
+[4] Benjamin Guthier, Stephan Kopf, Wolfgang Effelsberg. Algorithms for a Real-Time HDR Video System[J]. Department of Computer Science IV, University of Mannheim, Mannheim, Germany
 
 [5] Gabriel Eilertsen, Rafał K Mantiuk, and Jonas Unger. A comparative review of tone-mapping algorithms for high dynamic range video. In Computer Graphics Forum, volume 36, pages 565–592. Wiley Online Library, 2017.
 
