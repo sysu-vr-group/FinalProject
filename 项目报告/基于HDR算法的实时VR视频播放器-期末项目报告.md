@@ -34,7 +34,7 @@
 
      ![img](../images/2.png)
 
-     该式子即为反色调映射的核心算式，其中，$L_d(x,y)​$代表经过色调映射后 LDR 图像的像素点的值. 在映射过程中, 高亮度值的像素点可以近似地看作被 1/L 所量化压缩. 与此同时, 低亮度值的像素点可以看作被 1 量化压缩. 这使得高亮度值像素点在被压缩的同时, 低亮度值像素点的对比度得以保留.
+     该式子即为反色调映射的核心算式，其中，$L_d(x,y)$代表经过色调映射后 LDR 图像的像素点的值. 在映射过程中, 高亮度值的像素点可以近似地看作被 1/L 所量化压缩. 与此同时, 低亮度值的像素点可以看作被 1 量化压缩. 这使得高亮度值像素点在被压缩的同时, 低亮度值像素点的对比度得以保留.
 
      $L_{white}$ 决定了扩展函数的扩展曲线形状, 与映射后图像的对比度相关, 经过实验表明, 当取值较大时效果较好, 推荐采用 $L_{white}=L_{max}​$, 在限制伪像的同时提高对比度. 
 
@@ -178,18 +178,18 @@
 
       4. 如果$|L_{n0}- L_{navg}| \leq \varepsilon _{L}$，其中$\varepsilon_L$ 表示人眼不可察觉最大闪烁亮度差，则不对该帧亮度进行调整，转到步骤(2)继续处理下一帧。
       如果$|L_{n0}- L_{navg}| \geq \varepsilon _{H}$，其中$\varepsilon_H$表示判断场景改变的的依据，则视频进入了新的场景，不对该帧进行处理，转到步骤(1)，初始化。
-      如果$\varepsilon_L < |L{n0}- L_{navg}| < \varepsilon_H$，则代表在同一场景中发生了闪烁现象，调整该帧的亮度值得到$L{n1}$，$|L_{n1}- L_{navg}| \leq \varepsilon _{L}$，转到步骤(2)继续处理下一帧。
+      如果$\varepsilon_L < |L{n0}- L_{navg}| < \varepsilon_H$，则代表在同一场景中发生了闪烁现象，调整该帧的亮度值得到$L{n1}$，$|L_{n1}- L_{navg}| \leq \varepsilon _{L}​$，转到步骤(2)继续处理下一帧。
 
 3. 使用 Leaky Integrator 避免视频闪烁情况发生
 
    由于视频帧序列中可能出现异常的像素值，帧之间的参数可能出现过大的改变导致可见的闪烁现象，因此可以使用漏积分器（Leaky Integrator）来对帧中与像素值相关的参数进行调整，使得对每一帧的处理可以保留先前帧的参数影响，以降低帧之间的剧烈变化，减少闪烁现象:
     ​ $$A_n=(1-\alpha_L)A_{(n-1)}+\alpha_LA​$$
 
-   其中$\alpha_L\in[0, 1] $为定义的常数。经过漏积分器处理后可大幅降低参数的变化幅度，从而减少闪烁：
+   其中$\alpha_L\in[0, 1] ​$为定义的常数。经过漏积分器处理后可大幅降低参数的变化幅度，从而减少闪烁：
 
    ![](../images/leaky-integrator.png)
 
-   上图中红色曲线表示的为未进行处理时的$A=L_{max}-L_{avg}$的数值，蓝色曲线为$A_n=(1-\alpha_L)A_{(n-1)}+\alpha_LA$的数值。
+   上图中红色曲线表示的为未进行处理时的$A=L_{max}-L_{avg}​$的数值，蓝色曲线为$A_n=(1-\alpha_L)A_{(n-1)}+\alpha_LA​$的数值。
 
 4. 使用多核 CPU 并行化实现实时的视频帧处理
 
@@ -246,16 +246,18 @@ OpenGL渲染部分最为重要的就是球体的渲染，因为最后需要将�
 
 ## 六、参考文献
 
-[1] 朱恩弘,张红英,吴亚东,霍永青.单幅图像的高动态范围图像生成方法[J].计算机辅助设计与图形学学报,2016,28(10):1713-1722.
+[1] Durand, Frédo, and Julie Dorsey. "Fast bilateral filtering for the display of high-dynamic-range images." ACM transactions on graphics (TOG). Vol. 21. No. 3. ACM, 2002.
 
-[2] Sam Hasinoff, Dillon Sharlet, Ryan Geiss, Andrew Adams, Jonathan T. Barron, Florian Kainz, Jiawen Chen, and Marc Levoy. Burst photography for high dynamic range and low-light imaging on mobile cameras. SIGGRAPH Asia, 2016.
+[2] Gabriel Eilertsen, Rafał K Mantiuk, and Jonas Unger. A comparative review of tone-mapping algorithms for high dynamic range video. In Computer Graphics Forum, volume 36, pages 565–592. Wiley Online Library, 2017.
 
-[3] Durand, Frédo, and Julie Dorsey. "Fast bilateral filtering for the display of high-dynamic-range images." ACM transactions on graphics (TOG). Vol. 21. No. 3. ACM, 2002.
+[3] 朱恩弘,张红英,吴亚东,霍永青.单幅图像的高动态范围图像生成方法[J].计算机辅助设计与图形学学报,2016,28(10):1713-1722.
 
-[4] Benjamin Guthier, Stephan Kopf, and Wolfgang Effelsberg. Algorithms for a real-time hdr video system. Pattern Recognition Letters, 34(1):25–33, 2013.
+[4] Sam Hasinoff, Dillon Sharlet, Ryan Geiss, Andrew Adams, Jonathan T. Barron, Florian Kainz, Jiawen Chen, and Marc Levoy. Burst photography for high dynamic range and low-light imaging on mobile cameras. SIGGRAPH Asia, 2016.
 
-[5] Gabriel Eilertsen, Rafał K Mantiuk, and Jonas Unger. A comparative review of tone-mapping algorithms for high dynamic range video. In Computer Graphics Forum, volume 36, pages 565–592. Wiley Online Library, 2017.
+[5] Chris Kiser, Erik Reinhard, Mike Tocci, and Nora Tocci. Real time automated tone mapping system for hdr video. In IEEE International Conference on Image Processing, volume 134. IEEE Orlando, FL, 2012.
 
-[6] Benjamin Guthier, Stephan Kopf, Marc Eble, and Wolfgang Effelsberg. Flicker reduction in tone mapped high dynamic range video. In Color Imaging: Displaying, Processing, Hardcopy, and Applications, 2011.
+[6] Benjamin Guthier, Stephan Kopf, and Wolfgang Effelsberg. Algorithms for a real-time hdr video system. Pattern Recognition Letters, 34(1):25–33, 2013.
 
-[7] Chris Kiser, Erik Reinhard, Mike Tocci, and Nora Tocci. Real time automated tone mapping system for hdr video. In IEEE International Conference on Image Processing, volume 134. IEEE Orlando, FL, 2012.
+[7] Benjamin Guthier, Stephan Kopf, Marc Eble, and Wolfgang Effelsberg. Flicker reduction in tone mapped high dynamic range video. In Color Imaging: Displaying, Processing, Hardcopy, and Applications, 2011.
+
+
